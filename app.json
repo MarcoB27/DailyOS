@@ -3,6 +3,8 @@
     "name": "dailyos",
     "slug": "dailyos",
     "version": "1.0.0",
+    "scheme": "dailyos",
+    "backgroundColor": "#121214",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -24,6 +26,9 @@
     "plugins": [
       "expo-router",
       "expo-status-bar"
-    ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
