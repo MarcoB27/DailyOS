@@ -1,6 +1,7 @@
 // app/(tabs)/today.tsx
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Settings, Plus, Flame, CheckCircle2, Check } from 'lucide-react-native';
 import { theme } from '../../src/theme';
 import { getGreeting, getFormattedToday } from '../../src/utils/date-utils';
@@ -13,6 +14,7 @@ import { useHabits, useToggleHabit } from '../../src/features/habits/useHabitQue
 import { calculateHabitStreak } from '../../src/utils/streak-utils';
 
 export default function TodayScreen() {
+  const router = useRouter();
   const { data: tasks, isLoading: tasksLoading } = useTasks();
   const { data: habits, isLoading: habitsLoading } = useHabits();
 
@@ -64,13 +66,13 @@ export default function TodayScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        {/* HEADER */}
+        {/* HEADER CON ROUTING PER IMPOSTAZIONI */}
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>{getGreeting()}</Text>
             <Text style={styles.dateText}>{getFormattedToday()}</Text>
           </View>
-          <Pressable style={styles.iconButton}>
+          <Pressable style={styles.iconButton} onPress={() => router.push('/settings')}>
             <Settings size={20} color={theme.colors.textMuted} />
           </Pressable>
         </View>

@@ -6,12 +6,17 @@ import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { theme } from '../src/theme';
 import { AuthProvider, useAuth } from '../src/context/AuthContext';
+import { ErrorBoundary } from '../src/components/ui/ErrorBoundary';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
-      staleTime: 1000 * 60 * 5,
+      staleTime: 1000 * 60 * 5, // 5 minuti
+      networkMode: 'offlineFirst', // Mantieni i dati in cache se manca la rete
+    },
+    mutations: {
+      networkMode: 'offlineFirst',
     },
   },
 });
@@ -27,10 +32,8 @@ function NavigationGuard() {
     const inAuthGroup = segments[0] === '(auth)';
 
     if (!user && !inAuthGroup) {
-      // Se non è loggato e tenta di accedere alle tab -> Login
       router.replace('/(auth)/login');
     } else if (user && inAuthGroup) {
-      // Se è loggato e si trova nella schermata di login -> Dashboard
       router.replace('/(tabs)/today');
     }
   }, [user, isLoading, segments]);
@@ -47,19 +50,22 @@ function NavigationGuard() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)/login" />
       <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="settings/index" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-          <StatusBar style="light" />
-          <NavigationGuard />
-        </View>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+            <StatusBar style="light" />
+            <NavigationGuard />
+          </View>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

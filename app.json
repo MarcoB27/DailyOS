@@ -1,35 +1,45 @@
 {
   "expo": {
-    "name": "dailyos",
+    "name": "DailyOS",
     "slug": "dailyos",
     "version": "1.0.0",
-    "scheme": "dailyos",
-    "backgroundColor": "#121214",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#09090B"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.dailyos.app",
+      "userInterfaceStyle": "dark"
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#09090B"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "com.dailyos.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router",
-      "expo-status-bar",
-      "expo-asset"
+      "expo-router"
     ],
-    "experiments": {
-      "typedRoutes": true
+    "scheme": "dailyos",
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "43bf7069-a4fb-4a5b-bce0-5c59a828da07"
+      }
     }
   }
 }
