@@ -7,6 +7,8 @@ import { getGreeting, getFormattedToday } from '../../src/utils/date-utils';
 import { Task, Habit } from '../../src/types';
 import { ProgressBar } from '../../src/components/ui/ProgressBar';
 import { TaskItem } from '../../src/components/domain/TaskItem';
+import { TaskFormModal } from '../../src/components/domain/TaskFormModal';
+import { TaskFormValues } from '../../src/features/tasks/task-schema';
 
 const MOCK_TASKS: Task[] = [
   {
@@ -42,6 +44,7 @@ const MOCK_HABITS: Habit[] = [
 export default function TodayScreen() {
   const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
   const [habits, setHabits] = useState<Habit[]>(MOCK_HABITS);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const completedCount = tasks.filter((t) => t.isCompleted).length;
   const totalCount = tasks.length;
@@ -62,97 +65,124 @@ export default function TodayScreen() {
     );
   };
 
+  const handleCreateTask = (formValues: TaskFormValues) => {
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: formValues.title,
+      description: formValues.description,
+      dueDate: formValues.dueDate,
+      scheduledTime: formValues.scheduledTime || undefined,
+      estimatedDurationMinutes: formValues.estimatedDurationMinutes
+        ? Number(formValues.estimatedDurationMinutes)
+        : undefined,
+      category: formValues.category,
+      priority: formValues.priority,
+      isCompleted: false,
+    };
+
+    setTasks((prev) => [newTask, ...prev]);
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.dateText}>{getFormattedToday()}</Text>
+    <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        {/* HEADER */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.greeting}>{getGreeting()}</Text>
+            <Text style={styles.dateText}>{getFormattedToday()}</Text>
+          </View>
+          <Pressable style={styles.iconButton}>
+            <Settings size={20} color={theme.colors.textMuted} />
+          </Pressable>
         </View>
-        <Pressable style={styles.iconButton}>
-          <Settings size={20} color={theme.colors.textMuted} />
-        </Pressable>
-      </View>
 
-      {/* RIEPILOGO GIORNALIERO CARD */}
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryHeader}>
-          <Text style={styles.summaryTitle}>Progresso Giornaliero</Text>
-          <Text style={styles.summaryPercent}>{progressPercentage}%</Text>
-        </View>
-        <ProgressBar progress={progressPercentage} />
-        <View style={styles.summaryFooter}>
-          <Text style={styles.summarySubtext}>
-            {completedCount} di {totalCount} attività completate
-          </Text>
-        </View>
-      </View>
-
-      {/* BANNER GIORNATA CONCLUSA (Se tutto completato) */}
-      {isAllCompleted && (
-        <View style={styles.completedBanner}>
-          <CheckCircle2 size={24} color={theme.colors.success} />
-          <View style={{ flex: 1, marginLeft: theme.spacing.sm }}>
-            <Text style={styles.bannerTitle}>Ottimo lavoro!</Text>
-            <Text style={styles.bannerSubtitle}>Hai completato tutte le attività previste per oggi.</Text>
+        {/* RIEPILOGO GIORNALIERO CARD */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryHeader}>
+            <Text style={styles.summaryTitle}>Progresso Giornaliero</Text>
+            <Text style={styles.summaryPercent}>{progressPercentage}%</Text>
+          </View>
+          <ProgressBar progress={progressPercentage} />
+          <View style={styles.summaryFooter}>
+            <Text style={styles.summarySubtext}>
+              {completedCount} di {totalCount} attività completate
+            </Text>
           </View>
         </View>
-      )}
 
-      {/* SEZIONE ATTIVITÀ DI OGGI */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>La mia giornata</Text>
-        <Pressable style={styles.quickAddButton}>
-          <Plus size={16} color={theme.colors.primary} />
-          <Text style={styles.quickAddText}>Aggiungi</Text>
-        </Pressable>
-      </View>
-
-      {tasks.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Nessuna attività programmata per oggi.</Text>
-        </View>
-      ) : (
-        tasks.map((task) => (
-          <TaskItem key={task.id} task={task} onToggleComplete={toggleTask} />
-        ))
-      )}
-
-      {/* SEZIONE ABITUDINI */}
-      <View style={[styles.sectionHeader, { marginTop: theme.spacing.lg }]}>
-        <Text style={styles.sectionTitle}>Abitudini di oggi</Text>
-      </View>
-
-      <View style={styles.habitsRow}>
-        {habits.map((habit) => (
-          <Pressable
-            key={habit.id}
-            style={[
-              styles.habitCard,
-              habit.isCompletedToday && styles.habitCardCompleted,
-            ]}
-            onPress={() => toggleHabit(habit.id)}
-          >
-            <View style={styles.habitTop}>
-              <Flame size={16} color={theme.colors.warning} />
-              <Text style={styles.streakText}>{habit.streakCount} gg</Text>
+        {/* BANNER GIORNATA CONCLUSA */}
+        {isAllCompleted && (
+          <View style={styles.completedBanner}>
+            <CheckCircle2 size={24} color={theme.colors.success} />
+            <View style={{ flex: 1, marginLeft: theme.spacing.sm }}>
+              <Text style={styles.bannerTitle}>Ottimo lavoro!</Text>
+              <Text style={styles.bannerSubtitle}>Hai completato tutte le attività previste per oggi.</Text>
             </View>
-            <Text style={[styles.habitTitle, habit.isCompletedToday && styles.habitTitleCompleted]}>
-              {habit.title}
-            </Text>
-            <View
-              style={[
-                styles.habitCheck,
-                habit.isCompletedToday && styles.habitCheckCompleted,
-              ]}
-            >
-              {habit.isCompletedToday && <Check size={12} color="#FFF" strokeWidth={3} />}
-            </View>
+          </View>
+        )}
+
+        {/* SEZIONE ATTIVITÀ DI OGGI */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>La mia giornata</Text>
+          <Pressable style={styles.quickAddButton} onPress={() => setIsModalOpen(true)}>
+            <Plus size={16} color={theme.colors.primary} />
+            <Text style={styles.quickAddText}>Aggiungi</Text>
           </Pressable>
-        ))}
-      </View>
-    </ScrollView>
+        </View>
+
+        {tasks.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyText}>Nessuna attività programmata per oggi.</Text>
+          </View>
+        ) : (
+          tasks.map((task) => (
+            <TaskItem key={task.id} task={task} onToggleComplete={toggleTask} />
+          ))
+        )}
+
+        {/* SEZIONE ABITUDINI */}
+        <View style={[styles.sectionHeader, { marginTop: theme.spacing.lg }]}>
+          <Text style={styles.sectionTitle}>Abitudini di oggi</Text>
+        </View>
+
+        <View style={styles.habitsRow}>
+          {habits.map((habit) => (
+            <Pressable
+              key={habit.id}
+              style={[
+                styles.habitCard,
+                habit.isCompletedToday && styles.habitCardCompleted,
+              ]}
+              onPress={() => toggleHabit(habit.id)}
+            >
+              <View style={styles.habitTop}>
+                <Flame size={16} color={theme.colors.warning} />
+                <Text style={styles.streakText}>{habit.streakCount} gg</Text>
+              </View>
+              <Text style={[styles.habitTitle, habit.isCompletedToday && styles.habitTitleCompleted]}>
+                {habit.title}
+              </Text>
+              <View
+                style={[
+                  styles.habitCheck,
+                  habit.isCompletedToday && styles.habitCheckCompleted,
+                ]}
+              >
+                {habit.isCompletedToday && <Check size={12} color="#FFF" strokeWidth={3} />}
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* MODALE DI CREAZIONE ATTIVITÀ */}
+      <TaskFormModal
+        visible={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateTask}
+      />
+    </View>
   );
 }
 
