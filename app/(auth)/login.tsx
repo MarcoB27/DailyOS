@@ -29,16 +29,26 @@ export default function LoginScreen() {
     setLoading(true);
 
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
+      // Registrazione con auto-login
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: { display_name: displayName || email.split('@')[0] },
         },
       });
-      if (error) Alert.alert('Registrazione fallita', error.message);
-      else Alert.alert('Successo', 'Account creato con successo! Puoi accedere.');
+
+      if (error) {
+        Alert.alert('Registrazione fallita', error.message);
+      } else if (data.session) {
+        // L'utente è stato creato e loggato automaticamente
+        Alert.alert('Benvenuto!', 'Account creato con successo.');
+      } else {
+        // Se la conferma mail fosse ancora attiva su Supabase
+        Alert.alert('Registrazione completata', 'Controlla la tua email per confermare l\'account.');
+      }
     } else {
+      // Accesso standard
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

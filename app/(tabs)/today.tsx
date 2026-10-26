@@ -1,87 +1,65 @@
 // app/(tabs)/today.tsx
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { Settings, Plus, Flame, CheckCircle2, Check } from 'lucide-react-native';
 import { theme } from '../../src/theme';
 import { getGreeting, getFormattedToday } from '../../src/utils/date-utils';
-import { Task, Habit } from '../../src/types';
 import { ProgressBar } from '../../src/components/ui/ProgressBar';
 import { TaskItem } from '../../src/components/domain/TaskItem';
 import { TaskFormModal } from '../../src/components/domain/TaskFormModal';
 import { TaskFormValues } from '../../src/features/tasks/task-schema';
-
-const MOCK_TASKS: Task[] = [
-  {
-    id: '1',
-    title: 'Ripassare architettura calcolatori',
-    category: 'Studio',
-    priority: 'Alta',
-    scheduledTime: '10:00',
-    isCompleted: false,
-  },
-  {
-    id: '2',
-    title: 'Allenamento Full Body',
-    category: 'Allenamento',
-    priority: 'Media',
-    scheduledTime: '18:00',
-    isCompleted: true,
-  },
-  {
-    id: '3',
-    title: 'Spesa settimanale',
-    category: 'Commissioni',
-    priority: 'Bassa',
-    isCompleted: false,
-  },
-];
-
-const MOCK_HABITS: Habit[] = [
-  { id: '1', title: 'Bere 2L di acqua', icon: 'droplet', color: '#3B82F6', isCompletedToday: true, streakCount: 5 },
-  { id: '2', title: 'Leggere 20 pagine', icon: 'book', color: '#8B5CF6', isCompletedToday: false, streakCount: 3 },
-];
+import { useTasks, useCreateTask, useToggleTask } from '../../src/features/tasks/useTaskQueries';
+import { useHabits, useToggleHabit } from '../../src/features/habits/useHabitQueries';
+import { calculateHabitStreak } from '../../src/utils/streak-utils';
 
 export default function TodayScreen() {
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS);
-  const [habits, setHabits] = useState<Habit[]>(MOCK_HABITS);
+  const { data: tasks, isLoading: tasksLoading } = useTasks();
+  const { data: habits, isLoading: habitsLoading } = useHabits();
+
+  const toggleTaskMutation = useToggleTask();
+  const createTaskMutation = useCreateTask();
+  const toggleHabitMutation = useToggleHabit();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const completedCount = tasks.filter((t) => t.isCompleted).length;
-  const totalCount = tasks.length;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Filtra solo le task di oggi o non completate
+  const todayTasks = (tasks || []).filter((t) => !t.dueDate || t.dueDate === todayStr);
+
+  const completedCount = todayTasks.filter((t) => t.isCompleted).length;
+  const totalCount = todayTasks.length;
   const progressPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isAllCompleted = totalCount > 0 && completedCount === totalCount;
 
-  const toggleTask = (id: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, isCompleted: !t.isCompleted } : t))
-    );
+  const handleToggleTask = (id: string) => {
+    const task = todayTasks.find((t) => t.id === id);
+    if (task) {
+      toggleTaskMutation.mutate({ id, isCompleted: task.isCompleted });
+    }
   };
 
-  const toggleHabit = (id: string) => {
-    setHabits((prev) =>
-      prev.map((h) =>
-        h.id === id ? { ...h, isCompletedToday: !h.isCompletedToday } : h
-      )
-    );
+  const handleToggleHabit = (habitId: string, isCompletedToday: boolean) => {
+    toggleHabitMutation.mutate({
+      habitId,
+      completionDate: todayStr,
+      currentlyCompleted: isCompletedToday,
+    });
   };
 
   const handleCreateTask = (formValues: TaskFormValues) => {
-    const newTask: Task = {
-      id: Date.now().toString(),
-      title: formValues.title,
-      description: formValues.description,
-      dueDate: formValues.dueDate,
-      scheduledTime: formValues.scheduledTime || undefined,
-      estimatedDurationMinutes: formValues.estimatedDurationMinutes
-        ? Number(formValues.estimatedDurationMinutes)
-        : undefined,
-      category: formValues.category,
-      priority: formValues.priority,
-      isCompleted: false,
-    };
-
-    setTasks((prev) => [newTask, ...prev]);
+    createTaskMutation.mutate(formValues, {
+      onSuccess: () => setIsModalOpen(false),
+    });
   };
+
+  if (tasksLoading || habitsLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -97,7 +75,7 @@ export default function TodayScreen() {
           </Pressable>
         </View>
 
-        {/* RIEPILOGO GIORNALIERO CARD */}
+        {/* RIEPILOGO GIORNALIERO */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryHeader}>
             <Text style={styles.summaryTitle}>Progresso Giornaliero</Text>
@@ -131,49 +109,61 @@ export default function TodayScreen() {
           </Pressable>
         </View>
 
-        {tasks.length === 0 ? (
+        {todayTasks.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>Nessuna attività programmata per oggi.</Text>
           </View>
         ) : (
-          tasks.map((task) => (
-            <TaskItem key={task.id} task={task} onToggleComplete={toggleTask} />
+          todayTasks.map((task) => (
+            <TaskItem key={task.id} task={task} onToggleComplete={handleToggleTask} />
           ))
         )}
 
-        {/* SEZIONE ABITUDINI */}
+        {/* SEZIONE ABITUDINI DI OGGI */}
         <View style={[styles.sectionHeader, { marginTop: theme.spacing.lg }]}>
           <Text style={styles.sectionTitle}>Abitudini di oggi</Text>
         </View>
 
-        <View style={styles.habitsRow}>
-          {habits.map((habit) => (
-            <Pressable
-              key={habit.id}
-              style={[
-                styles.habitCard,
-                habit.isCompletedToday && styles.habitCardCompleted,
-              ]}
-              onPress={() => toggleHabit(habit.id)}
-            >
-              <View style={styles.habitTop}>
-                <Flame size={16} color={theme.colors.warning} />
-                <Text style={styles.streakText}>{habit.streakCount} gg</Text>
-              </View>
-              <Text style={[styles.habitTitle, habit.isCompletedToday && styles.habitTitleCompleted]}>
-                {habit.title}
-              </Text>
-              <View
-                style={[
-                  styles.habitCheck,
-                  habit.isCompletedToday && styles.habitCheckCompleted,
-                ]}
-              >
-                {habit.isCompletedToday && <Check size={12} color="#FFF" strokeWidth={3} />}
-              </View>
-            </Pressable>
-          ))}
-        </View>
+        {habits?.length === 0 ? (
+          <Text style={styles.emptyText}>Nessuna abitudine definita.</Text>
+        ) : (
+          <View style={styles.habitsRow}>
+            {habits?.map((habit) => {
+              const streakInfo = calculateHabitStreak(
+                habit.completions.map((c) => ({ completionDate: c })),
+                'DAILY',
+                [0, 1, 2, 3, 4, 5, 6]
+              );
+
+              return (
+                <Pressable
+                  key={habit.id}
+                  style={[
+                    styles.habitCard,
+                    habit.isCompletedToday && styles.habitCardCompleted,
+                  ]}
+                  onPress={() => handleToggleHabit(habit.id, habit.isCompletedToday)}
+                >
+                  <View style={styles.habitTop}>
+                    <Flame size={16} color={theme.colors.warning} />
+                    <Text style={styles.streakText}>{streakInfo.currentStreak} gg</Text>
+                  </View>
+                  <Text style={[styles.habitTitle, habit.isCompletedToday && styles.habitTitleCompleted]}>
+                    {habit.title}
+                  </Text>
+                  <View
+                    style={[
+                      styles.habitCheck,
+                      habit.isCompletedToday && styles.habitCheckCompleted,
+                    ]}
+                  >
+                    {habit.isCompletedToday && <Check size={12} color="#FFF" strokeWidth={3} />}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
 
       {/* MODALE DI CREAZIONE ATTIVITÀ */}
@@ -299,8 +289,10 @@ const styles = StyleSheet.create({
   habitsRow: {
     flexDirection: 'row',
     gap: theme.spacing.md,
+    flexWrap: 'wrap',
   },
   habitCard: {
+    minWidth: 140,
     flex: 1,
     backgroundColor: theme.colors.surface,
     padding: theme.spacing.md,
